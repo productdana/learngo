@@ -72,9 +72,9 @@ func sendFunnyEmail(w http.ResponseWriter, r *http.Request) {
 	// fetch dad joke
 	// attach dad joke at end of email body
 	// send funny email
-	from := mail.NewEmail("funnypants", "haha@lowrisk.com")
+	from := mail.NewEmail("funnypants", os.Getenv("TESTEMAIL"))
 	subject := "enhanced with dad joke"
-	to := mail.NewEmail("funnypantsrecipient", "houseplantstalker@gmail.com")
+	to := mail.NewEmail("funnypantsrecipient", os.Getenv("TESTEMAIL"))
 	plainTextContent := "test email body"
 	htmlContent := "<strong>blah " + plainTextContent + "</strong>"
 	message := mail.NewSingleEmail(from, subject, to, plainTextContent, htmlContent)
@@ -85,7 +85,8 @@ func sendFunnyEmail(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// email sent
 		fmt.Println(response.StatusCode)
-		json.NewEncoder(w).Encode(email)
+		fmt.Println(response)
+		json.NewEncoder(w).Encode(response)
 	}
 }
 
