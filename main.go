@@ -6,8 +6,11 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/gorilla/mux"
+	"github.com/sendgrid/sendgrid-go"
+	"github.com/sendgrid/sendgrid-go/helpers/mail"
 )
 
 type Article struct {
@@ -15,6 +18,11 @@ type Article struct {
 	Title   string `json:"Title"`
 	Desc    string `json:"desc"`
 	Content string `json:"content"`
+}
+
+type Email struct {
+	Subject string `json:"subject"`
+	Body    string `json:"body"`
 }
 
 // type Articles []Article
@@ -57,6 +65,30 @@ func createNewArticle(w http.ResponseWriter, r *http.Request) {
 	// fmt.Fprintf(w, "%+v", string(reqBody))
 }
 
+func sendFunnyEmail(w http.ResponseWriter, r *http.Request) {
+	reqBody, _ := ioutil.ReadAll(r.Body)
+	var email Email
+	json.Unmarshal(reqBody, &email)
+	// fetch dad joke
+	// attach dad joke at end of email body
+	// send funny email
+	from := mail.NewEmail("funnypants", "haha@lowrisk.com")
+	subject := "enhanced with dad joke"
+	to := mail.NewEmail("funnypantsrecipient", "houseplantstalker@gmail.com")
+	plainTextContent := "test email body"
+	htmlContent := "<strong>blah " + plainTextContent + "</strong>"
+	message := mail.NewSingleEmail(from, subject, to, plainTextContent, htmlContent)
+	client := sendgrid.NewSendClient(os.Getenv("SENDGRID_API_KEY"))
+	response, err := client.Send(message)
+	if err != nil {
+		log.Println(err)
+	} else {
+		// email sent
+		fmt.Println(response.StatusCode)
+		json.NewEncoder(w).Encode(email)
+	}
+}
+
 func deleteArticle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	key := vars["id"]
@@ -97,6 +129,8 @@ func handleRequests() {
 	myRouter.HandleFunc("/article/{id}", deleteArticle).Methods("DELETE")
 	myRouter.HandleFunc("/article/{id}", updateArticle).Methods("PATCH")
 	myRouter.HandleFunc("/article/{id}", returnSingleArticle)
+
+	myRouter.HandleFunc("/sendfunnyemail", sendFunnyEmail).Methods("POST")
 
 	log.Fatal(http.ListenAndServe(":8081", myRouter))
 	// http.HandleFunc("/", homePage)
