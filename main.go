@@ -25,6 +25,18 @@ type Email struct {
 	Body    string `json:"body"`
 }
 
+// type Dadjoke struct {
+// 	id     string `json:"id"`
+// 	joke   string `json:"joke"`
+// 	status int    `json:"status"`
+// }
+
+type Dadjoke struct {
+	Id     string
+	Joke   string
+	Status int
+}
+
 // type Articles []Article
 
 var Articles = []Article{
@@ -65,20 +77,52 @@ func createNewArticle(w http.ResponseWriter, r *http.Request) {
 	// fmt.Fprintf(w, "%+v", string(reqBody))
 }
 
+func getDadJoke() string {
+	client := &http.Client{}
+
+	req, _ := http.NewRequest("GET", "https://icanhazdadjoke.com/", nil)
+
+	req.Header.Add("Accept", "application/json") // Add or Set works
+
+	res, err := client.Do(req)
+
+	if err != nil {
+		fmt.Println("errrr")
+	}
+
+	defer res.Body.Close()
+	resBody, err := ioutil.ReadAll(res.Body)
+	var dadjoke Dadjoke
+	fmt.Println("resBody string:", string(resBody))
+	fmt.Println("resBody :", resBody)
+	baderr := json.Unmarshal(resBody, &dadjoke)
+	if baderr != nil {
+		fmt.Println("err in unmarshal block")
+	}
+	fmt.Println("dadjoke.Joke:", dadjoke.Joke)
+	return dadjoke.Joke
+}
+
 func sendFunnyEmail(w http.ResponseWriter, r *http.Request) {
 	reqBody, _ := ioutil.ReadAll(r.Body)
 	var email Email
 	json.Unmarshal(reqBody, &email)
+
 	// fetch dad joke
+	dadJoke := getDadJoke()
+
 	// attach dad joke at end of email body
-	// send funny email
+
 	from := mail.NewEmail("funnypants", os.Getenv("TESTEMAIL"))
-	subject := "enhanced with dad joke"
+	subject := email.Subject + " - enhanced with dad joke"
 	to := mail.NewEmail("funnypantsrecipient", os.Getenv("TESTEMAIL"))
-	plainTextContent := "test email body"
-	htmlContent := "<strong>blah " + plainTextContent + "</strong>"
+	plainTextContent := email.Body + " \n \n dad joke: " + dadJoke
+	htmlContent := "<strong>" + plainTextContent + "</strong>"
 	message := mail.NewSingleEmail(from, subject, to, plainTextContent, htmlContent)
+
 	client := sendgrid.NewSendClient(os.Getenv("SENDGRID_API_KEY"))
+
+	// send funny email
 	response, err := client.Send(message)
 	if err != nil {
 		log.Println(err)
