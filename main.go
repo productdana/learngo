@@ -26,9 +26,9 @@ type Email struct {
 }
 
 // type Dadjoke struct {
-// 	id     string `json:"id"`
-// 	joke   string `json:"joke"`
-// 	status int    `json:"status"`
+// 	Id     string `json:"id"`
+// 	Joke   string `json:"joke"`
+// 	Status int    `json:"status"`
 // }
 
 type Dadjoke struct {
