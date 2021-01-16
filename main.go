@@ -91,15 +91,15 @@ func getDadJoke() string {
 	}
 
 	defer res.Body.Close()
-	resBody, err := ioutil.ReadAll(res.Body)
+	resBody, _ := ioutil.ReadAll(res.Body)
 	var dadjoke Dadjoke
-	fmt.Println("resBody string:", string(resBody))
-	fmt.Println("resBody :", resBody)
-	baderr := json.Unmarshal(resBody, &dadjoke)
-	if baderr != nil {
+
+	anothererr := json.Unmarshal(resBody, &dadjoke)
+	if anothererr != nil {
 		fmt.Println("err in unmarshal block")
+		log.Fatal(err)
 	}
-	fmt.Println("dadjoke.Joke:", dadjoke.Joke)
+
 	return dadjoke.Joke
 }
 
