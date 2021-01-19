@@ -102,7 +102,7 @@ type Dadjoke struct {
 	Status int
 }
 
-func getDadJoke() string {
+func getDadJoke() (string, error) {
 	client := &http.Client{}
 
 	req, _ := http.NewRequest("GET", "https://icanhazdadjoke.com/", nil)
@@ -112,20 +112,19 @@ func getDadJoke() string {
 	res, err := client.Do(req)
 
 	if err != nil {
-		fmt.Println("errrr")
+		return "", err
 	}
 
 	defer res.Body.Close()
 	resBody, _ := ioutil.ReadAll(res.Body)
 	var dadjoke Dadjoke
 
-	anothererr := json.Unmarshal(resBody, &dadjoke)
-	if anothererr != nil {
-		fmt.Println("err in unmarshal block")
-		log.Fatal(err)
+	err = json.Unmarshal(resBody, &dadjoke)
+	if err != nil {
+		return "", err
 	}
 
-	return dadjoke.Joke
+	return dadjoke.Joke, nil
 }
 
 func sendFunnyEmail(w http.ResponseWriter, r *http.Request) {
@@ -134,10 +133,13 @@ func sendFunnyEmail(w http.ResponseWriter, r *http.Request) {
 	json.Unmarshal(reqBody, &email)
 
 	// fetch dad joke
-	dadJoke := getDadJoke()
+	dadJoke, err := getDadJoke()
+	if err != nil {
+		w.WriteHeader(400)
+		json.NewEncoder(w).Encode(err.Error)
+	}
 
 	// attach dad joke at end of email body
-
 	from := mail.NewEmail("funnypants", os.Getenv("TESTEMAIL"))
 	subject := email.Subject + " - enhanced with dad joke"
 	to := mail.NewEmail("funnypantsrecipient", os.Getenv("TESTEMAIL"))
@@ -151,6 +153,8 @@ func sendFunnyEmail(w http.ResponseWriter, r *http.Request) {
 	response, err := client.Send(message)
 	if err != nil {
 		log.Println(err)
+		w.WriteHeader(response.StatusCode)
+		json.NewEncoder(w).Encode(err.Error)
 	} else {
 		// email sent
 		fmt.Println(response.StatusCode)
