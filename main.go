@@ -20,25 +20,6 @@ type Article struct {
 	Content string `json:"content"`
 }
 
-type Email struct {
-	Subject string `json:"subject"`
-	Body    string `json:"body"`
-}
-
-// type Dadjoke struct {
-// 	Id     string `json:"id"`
-// 	Joke   string `json:"joke"`
-// 	Status int    `json:"status"`
-// }
-
-type Dadjoke struct {
-	Id     string
-	Joke   string
-	Status int
-}
-
-// type Articles []Article
-
 var Articles = []Article{
 	Article{Id: "1", Title: "Hello", Desc: "Article Description", Content: "Article Content"},
 	Article{Id: "2", Title: "Hello 2", Desc: "Article Description", Content: "Article Content"},
@@ -75,6 +56,50 @@ func createNewArticle(w http.ResponseWriter, r *http.Request) {
 	Articles = append(Articles, article)
 	json.NewEncoder(w).Encode(article)
 	// fmt.Fprintf(w, "%+v", string(reqBody))
+}
+
+func deleteArticle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	key := vars["id"]
+	for index, article := range Articles {
+		if article.Id == key {
+			Articles = append(Articles[:index], Articles[index+1:]...)
+		}
+	}
+}
+
+func updateArticle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	key := vars["id"]
+	for index, article := range Articles {
+		if article.Id == key {
+			reqBody, _ := ioutil.ReadAll(r.Body)
+			var updatedArticle Article
+			json.Unmarshal(reqBody, &updatedArticle)
+			// Is there an easy way to spread prev values and override only some properties?
+			// combinedUpdatedArticle := {...Articles[index], ...updatedArticle}
+			Articles[index] = updatedArticle
+			json.NewEncoder(w).Encode(updatedArticle)
+		}
+		// how to return error if id not found?
+	}
+}
+
+type Email struct {
+	Subject string `json:"subject"`
+	Body    string `json:"body"`
+}
+
+// type Dadjoke struct {
+// 	Id     string `json:"id"`
+// 	Joke   string `json:"joke"`
+// 	Status int    `json:"status"`
+// }
+
+type Dadjoke struct {
+	Id     string
+	Joke   string
+	Status int
 }
 
 func getDadJoke() string {
@@ -134,33 +159,6 @@ func sendFunnyEmail(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func deleteArticle(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	key := vars["id"]
-	for index, article := range Articles {
-		if article.Id == key {
-			Articles = append(Articles[:index], Articles[index+1:]...)
-		}
-	}
-}
-
-func updateArticle(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	key := vars["id"]
-	for index, article := range Articles {
-		if article.Id == key {
-			reqBody, _ := ioutil.ReadAll(r.Body)
-			var updatedArticle Article
-			json.Unmarshal(reqBody, &updatedArticle)
-			// Is there an easy way to spread prev values and override only some properties?
-			// combinedUpdatedArticle := {...Articles[index], ...updatedArticle}
-			Articles[index] = updatedArticle
-			json.NewEncoder(w).Encode(updatedArticle)
-		}
-		// how to return error if id not found?
-	}
-}
-
 func homePage(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Homepage endpoint hit")
 }
@@ -178,9 +176,6 @@ func handleRequests() {
 	myRouter.HandleFunc("/sendfunnyemail", sendFunnyEmail).Methods("POST")
 
 	log.Fatal(http.ListenAndServe(":8081", myRouter))
-	// http.HandleFunc("/", homePage)
-	// http.HandleFunc("/articles", allArticles)
-	// log.Fatal(http.ListenAndServe(":8081", nil))
 }
 
 // define entry point to app
