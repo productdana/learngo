@@ -136,7 +136,8 @@ func sendFunnyEmail(w http.ResponseWriter, r *http.Request) {
 	dadJoke, err := getDadJoke()
 	if err != nil {
 		w.WriteHeader(400)
-		json.NewEncoder(w).Encode(err.Error)
+		json.NewEncoder(w).Encode(err)
+		return
 	}
 
 	// attach dad joke at end of email body
