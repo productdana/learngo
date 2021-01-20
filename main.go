@@ -20,25 +20,6 @@ type Article struct {
 	Content string `json:"content"`
 }
 
-type Email struct {
-	Subject string `json:"subject"`
-	Body    string `json:"body"`
-}
-
-// type Dadjoke struct {
-// 	Id     string `json:"id"`
-// 	Joke   string `json:"joke"`
-// 	Status int    `json:"status"`
-// }
-
-type Dadjoke struct {
-	Id     string
-	Joke   string
-	Status int
-}
-
-// type Articles []Article
-
 var Articles = []Article{
 	Article{Id: "1", Title: "Hello", Desc: "Article Description", Content: "Article Content"},
 	Article{Id: "2", Title: "Hello 2", Desc: "Article Description", Content: "Article Content"},
@@ -77,63 +58,6 @@ func createNewArticle(w http.ResponseWriter, r *http.Request) {
 	// fmt.Fprintf(w, "%+v", string(reqBody))
 }
 
-func getDadJoke() string {
-	client := &http.Client{}
-
-	req, _ := http.NewRequest("GET", "https://icanhazdadjoke.com/", nil)
-
-	req.Header.Add("Accept", "application/json") // Add or Set works
-
-	res, err := client.Do(req)
-
-	if err != nil {
-		fmt.Println("errrr")
-	}
-
-	defer res.Body.Close()
-	resBody, _ := ioutil.ReadAll(res.Body)
-	var dadjoke Dadjoke
-
-	anothererr := json.Unmarshal(resBody, &dadjoke)
-	if anothererr != nil {
-		fmt.Println("err in unmarshal block")
-		log.Fatal(err)
-	}
-
-	return dadjoke.Joke
-}
-
-func sendFunnyEmail(w http.ResponseWriter, r *http.Request) {
-	reqBody, _ := ioutil.ReadAll(r.Body)
-	var email Email
-	json.Unmarshal(reqBody, &email)
-
-	// fetch dad joke
-	dadJoke := getDadJoke()
-
-	// attach dad joke at end of email body
-
-	from := mail.NewEmail("funnypants", os.Getenv("TESTEMAIL"))
-	subject := email.Subject + " - enhanced with dad joke"
-	to := mail.NewEmail("funnypantsrecipient", os.Getenv("TESTEMAIL"))
-	plainTextContent := email.Body + " \n \n dad joke: " + dadJoke
-	htmlContent := "<strong>" + plainTextContent + "</strong>"
-	message := mail.NewSingleEmail(from, subject, to, plainTextContent, htmlContent)
-
-	client := sendgrid.NewSendClient(os.Getenv("SENDGRID_API_KEY"))
-
-	// send funny email
-	response, err := client.Send(message)
-	if err != nil {
-		log.Println(err)
-	} else {
-		// email sent
-		fmt.Println(response.StatusCode)
-		fmt.Println(response)
-		json.NewEncoder(w).Encode(response)
-	}
-}
-
 func deleteArticle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	key := vars["id"]
@@ -161,6 +85,85 @@ func updateArticle(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type Email struct {
+	Subject string `json:"subject"`
+	Body    string `json:"body"`
+}
+
+// type Dadjoke struct {
+// 	Id     string `json:"id"`
+// 	Joke   string `json:"joke"`
+// 	Status int    `json:"status"`
+// }
+
+type Dadjoke struct {
+	Id     string
+	Joke   string
+	Status int
+}
+
+func getDadJoke() (string, error) {
+	client := &http.Client{}
+
+	req, _ := http.NewRequest("GET", "https://icanhazdadjoke.com/", nil)
+
+	req.Header.Add("Accept", "application/json") // Add or Set works
+
+	res, err := client.Do(req)
+
+	if err != nil {
+		return "", err
+	}
+
+	defer res.Body.Close()
+	resBody, _ := ioutil.ReadAll(res.Body)
+	var dadjoke Dadjoke
+
+	err = json.Unmarshal(resBody, &dadjoke)
+	if err != nil {
+		return "", err
+	}
+
+	return dadjoke.Joke, nil
+}
+
+func sendFunnyEmail(w http.ResponseWriter, r *http.Request) {
+	reqBody, _ := ioutil.ReadAll(r.Body)
+	var email Email
+	json.Unmarshal(reqBody, &email)
+
+	// fetch dad joke
+	dadJoke, err := getDadJoke()
+	if err != nil {
+		w.WriteHeader(400)
+		json.NewEncoder(w).Encode(err)
+		return
+	}
+
+	// attach dad joke at end of email body
+	from := mail.NewEmail("funnypants", os.Getenv("TESTEMAIL"))
+	subject := email.Subject + " - enhanced with dad joke"
+	to := mail.NewEmail("funnypantsrecipient", os.Getenv("TESTEMAIL"))
+	plainTextContent := email.Body + " \n \n dad joke: " + dadJoke
+	htmlContent := "<strong>" + plainTextContent + "</strong>"
+	message := mail.NewSingleEmail(from, subject, to, plainTextContent, htmlContent)
+
+	client := sendgrid.NewSendClient(os.Getenv("SENDGRID_API_KEY"))
+
+	// send funny email
+	response, err := client.Send(message)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(response.StatusCode)
+		json.NewEncoder(w).Encode(err.Error)
+	} else {
+		// email sent
+		fmt.Println(response.StatusCode)
+		fmt.Println(response)
+		json.NewEncoder(w).Encode(response)
+	}
+}
+
 func homePage(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Homepage endpoint hit")
 }
@@ -178,9 +181,6 @@ func handleRequests() {
 	myRouter.HandleFunc("/sendfunnyemail", sendFunnyEmail).Methods("POST")
 
 	log.Fatal(http.ListenAndServe(":8081", myRouter))
-	// http.HandleFunc("/", homePage)
-	// http.HandleFunc("/articles", allArticles)
-	// log.Fatal(http.ListenAndServe(":8081", nil))
 }
 
 // define entry point to app
